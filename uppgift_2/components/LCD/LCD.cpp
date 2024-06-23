@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string>
 #include "LCD.h"
-#include "driver/i2c.h"
+#include "driver/i2c_master.h"
 #include "I2CBus.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -19,7 +19,17 @@
 
 static const char *TAG = "LCD";
 
-// constructor for LCD class
+/*
+ *   - B7: data bit 3
+ *   - B6: data bit 2
+ *   - B5: data bit 1
+ *   - B4: data bit 0
+ *   - B3: backlight (BL): off = 0, on = 1
+ *   - B2: enable (EN): change from 1 to 0 to clock data into controller
+ *   - B1: read/write (RW): write = 0, read = 1
+ *   - B0: register select (RS): command = 0, data = 1
+ */
+
 LCD::LCD() {}
 
 // rs = 0 for command, rs = 1 for data
@@ -35,23 +45,8 @@ esp_err_t LCD::write_byte(uint8_t byte, uint8_t rs)
   write_data[2] = bottom_nibble | 0x0C | rs;          // Set EN bit high and keep backlight on
   write_data[3] = bottom_nibble | LCD_BACKLIGHT | rs; // Set EN bit low and keep backlight on
 
-  return i2c_master_write_to_device(I2C_MASTER_NUM, 0x27, write_data, sizeof(write_data), 1000);
+  return i2c_master_write_to_device(I2C_MASTER_NUM, LCD_DEVICE_ADDR, write_data, sizeof(write_data), 1000);
 }
-
-// esp_err_t LCD::write_buffer(uint8_t[] buffer, uint8_t rs)
-// {
-//   uint8_t write_data[4];
-
-//   uint8_t top_nibble = byte & 0xF0;
-//   uint8_t bottom_nibble = (byte << 4) & 0xF0;
-
-//   write_data[0] = top_nibble | 0x0C | rs;             // Set EN bit high. and keep backlight on
-//   write_data[1] = top_nibble | LCD_BACKLIGHT | rs;    // Set EN bit low and keep backlight on
-//   write_data[2] = bottom_nibble | 0x0C | rs;          // Set EN bit high and keep backlight on
-//   write_data[3] = bottom_nibble | LCD_BACKLIGHT | rs; // Set EN bit low and keep backlight on
-
-//   return i2c_master_write_to_device(I2C_MASTER_NUM, 0x27, write_data, sizeof(write_data), I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
-// }
 
 void LCD::send_cmd(uint8_t cmd)
 {
@@ -87,6 +82,7 @@ void LCD::initialize()
   vTaskDelay(pdMS_TO_TICKS(1));
   display_off();
 
+  vTaskDelay(pdMS_TO_TICKS(1));
   display_on();
 
   ESP_LOGI(TAG, "Clearing Display");
@@ -108,13 +104,13 @@ void LCD::deinitialize()
 void LCD::display_on()
 {
   send_cmd(LCD_DISPLAY_ON); // Display control: display on, cursor off, blink off
-  vTaskDelay(pdMS_TO_TICKS(1));
+  vTaskDelay(pdMS_TO_TICKS(2));
 }
 
 void LCD::display_off()
 {
   send_cmd(LCD_DISPLAY_OFF); // Display on/off control --> D=0,C=0, B=0  ---> display off
-  vTaskDelay(pdMS_TO_TICKS(1));
+  vTaskDelay(pdMS_TO_TICKS(2));
 }
 
 void LCD::display_text(const std::string &text)
@@ -143,7 +139,9 @@ void LCD::return_home()
 
 void LCD::set_cursor(uint8_t row, uint8_t col)
 {
-  // set
+  uint8_t row_offsets[] = {0x00, 0x40, 0x14, 0x54};
+  send_cmd(0x80 | (col + row_offsets[row]));
+  vTaskDelay(pdMS_TO_TICKS(2));
 }
 
 uint8_t LCD::get_address()
