@@ -6,7 +6,7 @@
     "OPENOCD_SCRIPTS": "/Users/vilberg/.espressif/tools/openocd-esp32/v0.12.0-esp32-20230921/openocd-esp32/share/openocd/scripts",
     "ESP_ROM_ELF_DIR": "/Users/vilberg/.espressif/tools/esp-rom-elfs/20230320/"
   },
-  "idf.espIdfPath": "/Users/vilberg/esp/v5.2.1/esp-idf",
+  "idf.espIdfPath": "/Users/vilberg/esp/v5.2.2/esp-idf",
   "idf.openOcdConfigs": [
     "interface/ftdi/esp32_devkitj_v1.cfg",
     "target/esp32.cfg"
